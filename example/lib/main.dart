@@ -93,7 +93,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 pollInterval: 4,
               ),
-              builder: (QueryResult result) {
+              builder: (QueryResult result,
+                  {VoidCallback refetch, void fetchMore}) {
                 if (result.loading) {
                   return const Center(
                     child: CircularProgressIndicator(),

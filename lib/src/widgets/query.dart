@@ -7,7 +7,10 @@ import 'package:graphql_flutter/src/core/query_result.dart';
 
 import 'package:graphql_flutter/src/widgets/graphql_provider.dart';
 
-typedef QueryBuilder = Widget Function(QueryResult result);
+typedef FetchMoreCallback = void Function(Map<String, dynamic> variables);
+
+typedef QueryBuilder = Widget Function(QueryResult result,
+    {VoidCallback refetch, FetchMoreCallback fetchMore});
 
 /// Builds a [Query] widget based on the a given set of [QueryOptions]
 /// that streams [QueryResult]s into the [QueryBuilder].
@@ -27,6 +30,7 @@ class Query extends StatefulWidget {
 
 class QueryState extends State<Query> {
   ObservableQuery observableQuery;
+  QueryResult currentResult;
 
   WatchQueryOptions get _options {
     FetchPolicy fetchPolicy = widget.options.fetchPolicy;
@@ -53,6 +57,8 @@ class QueryState extends State<Query> {
     observableQuery?.close();
     observableQuery = client.watchQuery(_options);
   }
+
+  void _fetchMore(Map<String, dynamic> variables) {}
 
   @override
   void didChangeDependencies() {
@@ -87,7 +93,25 @@ class QueryState extends State<Query> {
         BuildContext buildContext,
         AsyncSnapshot<QueryResult> snapshot,
       ) {
-        return widget?.builder(snapshot.data);
+        /// when re-fetching or loading the next page of data, we don't want to
+        /// loose previous data. So loading should be true but we still keep
+        /// the data from before until that changes
+        if (currentResult?.data != null) {
+          currentResult = QueryResult(
+            loading: snapshot.data?.loading,
+            data: snapshot.data?.data ?? currentResult.data,
+            errors: snapshot.data?.errors,
+            stale: snapshot.data?.stale,
+          );
+        } else {
+          currentResult = snapshot.data;
+        }
+
+        return widget?.builder(
+          currentResult,
+          refetch: _initQuery,
+          fetchMore: _fetchMore,
+        );
       },
     );
   }

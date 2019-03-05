@@ -32,6 +32,7 @@ class BaseOptions {
     this.fetchPolicy,
     this.errorPolicy,
     this.context,
+    this.fetchMoreMerge,
   });
 
   /// A GraphQL document that consists of a single query to be sent down to the server.
@@ -49,7 +50,13 @@ class BaseOptions {
 
   /// Context to be passed to link execution chain.
   Map<String, dynamic> context;
+
+  /// the merge function if the query is run again with different variables to
+  /// fetch the next page
+  FetchMoreMerge fetchMoreMerge;
 }
+
+typedef FetchMoreMerge = dynamic Function(dynamic prev, dynamic next);
 
 /// Query options.
 class QueryOptions extends BaseOptions {

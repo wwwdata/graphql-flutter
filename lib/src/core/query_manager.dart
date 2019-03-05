@@ -61,8 +61,10 @@ class QueryManager {
 
   Future<QueryResult> fetchQuery(
     String queryId,
-    BaseOptions options,
-  ) async {
+    BaseOptions options, [
+    dynamic prevResult,
+    Map<String, dynamic> fetchMoreVariables,
+  ]) async {
     final ObservableQuery observableQuery = getQuery(queryId);
     // XXX there is a bug in the `graphql_parser` package, where this result might be
     // null event though the operation name is present in the document
@@ -76,6 +78,10 @@ class QueryManager {
 
     FetchResult fetchResult;
     QueryResult queryResult;
+
+    if (fetchMoreVariables != null && observableQuery != null) {
+      observableQuery.sendLoading();
+    }
 
     try {
       if (options.context != null) {
@@ -92,7 +98,11 @@ class QueryManager {
             data: cachedData,
           );
 
-          queryResult = _mapFetchResultToQueryResult(fetchResult);
+          queryResult = _mapFetchResultToQueryResult(
+            fetchResult,
+            prevResult,
+            options.fetchMoreMerge,
+          );
 
           // add the result to an observable query if it exists
           if (observableQuery != null) {
@@ -136,7 +146,8 @@ class QueryManager {
         );
       }
 
-      queryResult = _mapFetchResultToQueryResult(fetchResult);
+      queryResult = _mapFetchResultToQueryResult(
+          fetchResult, prevResult, options.fetchMoreMerge);
     } catch (error) {
       // TODO some dart errors break this
       final GraphQLError graphQLError = GraphQLError(
@@ -188,7 +199,8 @@ class QueryManager {
     return requestId;
   }
 
-  QueryResult _mapFetchResultToQueryResult(FetchResult fetchResult) {
+  QueryResult _mapFetchResultToQueryResult(FetchResult fetchResult,
+      [dynamic prevResult, FetchMoreMerge merge]) {
     List<GraphQLError> errors;
 
     if (fetchResult.errors != null) {
@@ -197,8 +209,14 @@ class QueryManager {
       ));
     }
 
+    dynamic data = fetchResult.data;
+
+    if (prevResult != null && merge != null) {
+      data = merge(prevResult, fetchResult.data);
+    }
+
     return QueryResult(
-      data: fetchResult.data,
+      data: data,
       errors: errors,
       loading: false,
     );
