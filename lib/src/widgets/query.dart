@@ -59,6 +59,11 @@ class QueryState extends State<Query> {
     observableQuery = client.watchQuery(_options);
   }
 
+  void _refetch() async {
+    observableQuery.sendLoading();
+    observableQuery.fetchResults();
+  }
+
   void _fetchMore(Map<String, dynamic> variables) {
     observableQuery?.fetchMoreResults(currentResult.data, variables);
   }
@@ -112,7 +117,7 @@ class QueryState extends State<Query> {
 
         return widget?.builder(
           currentResult,
-          refetch: _initQuery,
+          refetch: _refetch,
           fetchMore: _fetchMore,
         );
       },

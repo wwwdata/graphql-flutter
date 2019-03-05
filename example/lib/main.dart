@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 
@@ -58,12 +60,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int nRepositories = 10;
+  int nRepositories = 20;
   bool fetchingMore = false;
+  Completer<void> refetchCompleter;
 
   void changeQuery(String number) {
     setState(() {
-      nRepositories = int.parse(number) ?? 10;
+      nRepositories = int.parse(number) ?? 20;
     });
   }
 
@@ -81,13 +84,14 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             TextField(
               decoration: const InputDecoration(
-                labelText: 'Number of initial repositories (default 10)',
+                labelText: 'Number of initial repositories (default 20)',
               ),
               keyboardType: TextInputType.number,
               onSubmitted: changeQuery,
             ),
             Query(
               options: QueryOptions(
+                fetchPolicy: FetchPolicy.cacheAndNetwork,
                 document: queries.readRepositories,
                 variables: <String, dynamic>{
                   'nRepositories': nRepositories,
@@ -96,7 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   return prev['viewer']['repositories']['edges']
                       .addAll(next['viewer']['repositories']['edges']);
                 },
-                //pollInterval: 4,
               ),
               builder: (QueryResult result,
                   {VoidCallback refetch, FetchMoreCallback fetchMore}) {
@@ -104,6 +107,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   return const Center(
                     child: CircularProgressIndicator(),
                   );
+                }
+
+                if (result.loading == false &&
+                    refetchCompleter?.isCompleted != true) {
+                  refetchCompleter?.complete();
                 }
 
                 if (fetchingMore == true && result.loading == false) {
@@ -135,10 +143,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       }
                       return false;
                     },
-                    child: ListView.builder(
-                      itemCount: edges.length,
-                      itemBuilder: (BuildContext context, int index) =>
-                          StarrableRepository(repository: edges[index]['node']),
+                    child: RefreshIndicator(
+                      onRefresh: () {
+                        refetch();
+                        refetchCompleter = Completer<void>();
+                        return refetchCompleter.future;
+                      },
+                      child: ListView.builder(
+                        itemCount: edges.length,
+                        itemBuilder: (BuildContext context, int index) =>
+                            StarrableRepository(
+                                repository: edges[index]['node']),
+                      ),
                     ),
                   ),
                 );
