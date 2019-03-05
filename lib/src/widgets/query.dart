@@ -47,6 +47,7 @@ class QueryState extends State<Query> {
       pollInterval: widget.options.pollInterval,
       fetchResults: true,
       context: widget.options.context,
+      fetchMoreMerge: widget.options.fetchMoreMerge,
     );
   }
 
@@ -58,7 +59,9 @@ class QueryState extends State<Query> {
     observableQuery = client.watchQuery(_options);
   }
 
-  void _fetchMore(Map<String, dynamic> variables) {}
+  void _fetchMore(Map<String, dynamic> variables) {
+    observableQuery?.fetchMoreResults(currentResult.data, variables);
+  }
 
   @override
   void didChangeDependencies() {

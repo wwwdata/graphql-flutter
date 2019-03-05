@@ -69,8 +69,13 @@ class ObservableQuery {
     }
   }
 
-  void fetchMoreResults(Map<String, dynamic> variables) {
-    queryManager.fetchQuery(queryId, options, variables);
+  void fetchMoreResults(dynamic prevResult, Map<String, dynamic> variables) {
+    queryManager.fetchQuery(
+      queryId,
+      options,
+      prevResult: prevResult,
+      fetchMoreVariables: variables,
+    );
   }
 
   void sendLoading() {

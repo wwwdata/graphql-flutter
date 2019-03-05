@@ -58,11 +58,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int nRepositories = 50;
+  int nRepositories = 10;
+  bool fetchingMore = false;
 
   void changeQuery(String number) {
     setState(() {
-      nRepositories = int.parse(number) ?? 50;
+      nRepositories = int.parse(number) ?? 10;
     });
   }
 
@@ -80,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             TextField(
               decoration: const InputDecoration(
-                labelText: 'Number of repositories (default 50)',
+                labelText: 'Number of initial repositories (default 10)',
               ),
               keyboardType: TextInputType.number,
               onSubmitted: changeQuery,
@@ -91,14 +92,22 @@ class _MyHomePageState extends State<MyHomePage> {
                 variables: <String, dynamic>{
                   'nRepositories': nRepositories,
                 },
-                pollInterval: 4,
+                fetchMoreMerge: (dynamic prev, dynamic next) {
+                  return prev['viewer']['repositories']['edges']
+                      .addAll(next['viewer']['repositories']['edges']);
+                },
+                //pollInterval: 4,
               ),
               builder: (QueryResult result,
-                  {VoidCallback refetch, void fetchMore}) {
-                if (result.loading) {
+                  {VoidCallback refetch, FetchMoreCallback fetchMore}) {
+                if (result.loading && result.data == null) {
                   return const Center(
                     child: CircularProgressIndicator(),
                   );
+                }
+
+                if (fetchingMore == true && result.loading == false) {
+                  fetchingMore = false;
                 }
 
                 if (result.hasErrors) {
@@ -106,14 +115,31 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
 
                 // result.data can be either a [List<dynamic>] or a [Map<String, dynamic>]
-                final List<dynamic> repositories =
-                    result.data['viewer']['repositories']['nodes'];
+                final List<dynamic> edges =
+                    result.data['viewer']['repositories']['edges'];
 
                 return Expanded(
-                  child: ListView.builder(
-                    itemCount: repositories.length,
-                    itemBuilder: (BuildContext context, int index) =>
-                        StarrableRepository(repository: repositories[index]),
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification notification) {
+                      if (edges.length <
+                              result.data['viewer']['repositories']
+                                  ['totalCount'] &&
+                          fetchingMore == false &&
+                          notification.metrics.pixels >=
+                              notification.metrics.maxScrollExtent) {
+                        fetchingMore = true;
+                        fetchMore(<String, dynamic>{
+                          'nRepositories': nRepositories,
+                          'after': edges.last['cursor'],
+                        });
+                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                      itemCount: edges.length,
+                      itemBuilder: (BuildContext context, int index) =>
+                          StarrableRepository(repository: edges[index]['node']),
+                    ),
                   ),
                 );
               },

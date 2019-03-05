@@ -61,10 +61,10 @@ class QueryManager {
 
   Future<QueryResult> fetchQuery(
     String queryId,
-    BaseOptions options, [
+    BaseOptions options, {
     dynamic prevResult,
     Map<String, dynamic> fetchMoreVariables,
-  ]) async {
+  }) async {
     final ObservableQuery observableQuery = getQuery(queryId);
     // XXX there is a bug in the `graphql_parser` package, where this result might be
     // null event though the operation name is present in the document
@@ -72,7 +72,7 @@ class QueryManager {
     // create a new operation to fetch
     final Operation operation = Operation(
       document: options.document,
-      variables: options.variables,
+      variables: fetchMoreVariables ?? options.variables,
       operationName: operationName,
     );
 
@@ -211,7 +211,7 @@ class QueryManager {
 
     dynamic data = fetchResult.data;
 
-    if (prevResult != null && merge != null) {
+    if (fetchResult.errors == null && prevResult != null && merge != null) {
       data = merge(prevResult, fetchResult.data);
     }
 

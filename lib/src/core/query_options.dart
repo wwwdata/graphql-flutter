@@ -67,12 +67,14 @@ class QueryOptions extends BaseOptions {
     ErrorPolicy errorPolicy = ErrorPolicy.none,
     this.pollInterval,
     Map<String, dynamic> context,
+    FetchMoreMerge fetchMoreMerge,
   }) : super(
           document: document,
           variables: variables,
           fetchPolicy: fetchPolicy,
           errorPolicy: errorPolicy,
           context: context,
+          fetchMoreMerge: fetchMoreMerge,
         );
 
   /// The time interval (in milliseconds) on which this query should be
@@ -107,6 +109,7 @@ class WatchQueryOptions extends QueryOptions {
     int pollInterval,
     this.fetchResults,
     Map<String, dynamic> context,
+    FetchMoreMerge fetchMoreMerge,
   }) : super(
           document: document,
           variables: variables,
@@ -114,6 +117,7 @@ class WatchQueryOptions extends QueryOptions {
           errorPolicy: errorPolicy,
           pollInterval: pollInterval,
           context: context,
+          fetchMoreMerge: fetchMoreMerge,
         );
 
   /// Whether or not to fetch result.
