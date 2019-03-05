@@ -136,10 +136,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           notification.metrics.pixels >=
                               notification.metrics.maxScrollExtent) {
                         fetchingMore = true;
-                        fetchMore(<String, dynamic>{
-                          'nRepositories': nRepositories,
-                          'after': edges.last['cursor'],
-                        });
+                        print('FETCHING MORE');
+                        fetchMore(
+                            (edges.length / nRepositories).floor(),
+                            <String, dynamic>{
+                              'nRepositories': nRepositories,
+                              'after': edges.last['cursor'],
+                            });
                       }
                       return false;
                     },

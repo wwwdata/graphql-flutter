@@ -61,10 +61,8 @@ class QueryManager {
 
   Future<QueryResult> fetchQuery(
     String queryId,
-    BaseOptions options, {
-    dynamic prevResult,
-    Map<String, dynamic> fetchMoreVariables,
-  }) async {
+    BaseOptions options,
+  ) async {
     final ObservableQuery observableQuery = getQuery(queryId);
     // XXX there is a bug in the `graphql_parser` package, where this result might be
     // null event though the operation name is present in the document
@@ -72,16 +70,12 @@ class QueryManager {
     // create a new operation to fetch
     final Operation operation = Operation(
       document: options.document,
-      variables: fetchMoreVariables ?? options.variables,
+      variables: options.variables,
       operationName: operationName,
     );
 
     FetchResult fetchResult;
     QueryResult queryResult;
-
-    if (fetchMoreVariables != null && observableQuery != null) {
-      observableQuery.sendLoading();
-    }
 
     try {
       if (options.context != null) {
@@ -98,11 +92,7 @@ class QueryManager {
             data: cachedData,
           );
 
-          queryResult = _mapFetchResultToQueryResult(
-            fetchResult,
-            prevResult,
-            options.fetchMoreMerge,
-          );
+          queryResult = _mapFetchResultToQueryResult(fetchResult);
 
           // add the result to an observable query if it exists
           if (observableQuery != null) {
@@ -146,8 +136,7 @@ class QueryManager {
         );
       }
 
-      queryResult = _mapFetchResultToQueryResult(
-          fetchResult, prevResult, options.fetchMoreMerge);
+      queryResult = _mapFetchResultToQueryResult(fetchResult);
     } catch (error) {
       // TODO some dart errors break this
       final GraphQLError graphQLError = GraphQLError(
@@ -199,8 +188,7 @@ class QueryManager {
     return requestId;
   }
 
-  QueryResult _mapFetchResultToQueryResult(FetchResult fetchResult,
-      [dynamic prevResult, FetchMoreMerge merge]) {
+  QueryResult _mapFetchResultToQueryResult(FetchResult fetchResult) {
     List<GraphQLError> errors;
 
     if (fetchResult.errors != null) {
@@ -209,14 +197,8 @@ class QueryManager {
       ));
     }
 
-    dynamic data = fetchResult.data;
-
-    if (fetchResult.errors == null && prevResult != null && merge != null) {
-      data = merge(prevResult, fetchResult.data);
-    }
-
     return QueryResult(
-      data: data,
+      data: fetchResult.data,
       errors: errors,
       loading: false,
     );

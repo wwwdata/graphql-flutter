@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:collection';
+
 import 'package:flutter/widgets.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'package:graphql_flutter/src/graphql_client.dart';
 import 'package:graphql_flutter/src/core/observable_query.dart';
@@ -7,7 +11,8 @@ import 'package:graphql_flutter/src/core/query_result.dart';
 
 import 'package:graphql_flutter/src/widgets/graphql_provider.dart';
 
-typedef FetchMoreCallback = void Function(Map<String, dynamic> variables);
+typedef FetchMoreCallback = void Function(
+    int page, Map<String, dynamic> variables);
 
 typedef QueryBuilder = Widget Function(QueryResult result,
     {VoidCallback refetch, FetchMoreCallback fetchMore});
@@ -31,6 +36,8 @@ class Query extends StatefulWidget {
 class QueryState extends State<Query> {
   ObservableQuery observableQuery;
   QueryResult currentResult;
+  LinkedHashMap<int, ObservableQuery> pageResults =
+      LinkedHashMap<int, ObservableQuery>.from(<int, ObservableQuery>{});
 
   WatchQueryOptions get _options {
     FetchPolicy fetchPolicy = widget.options.fetchPolicy;
@@ -47,7 +54,6 @@ class QueryState extends State<Query> {
       pollInterval: widget.options.pollInterval,
       fetchResults: true,
       context: widget.options.context,
-      fetchMoreMerge: widget.options.fetchMoreMerge,
     );
   }
 
@@ -60,12 +66,20 @@ class QueryState extends State<Query> {
   }
 
   void _refetch() async {
+    pageResults =
+        LinkedHashMap<int, ObservableQuery>.from(<int, ObservableQuery>{});
     observableQuery.sendLoading();
     observableQuery.fetchResults();
   }
 
-  void _fetchMore(Map<String, dynamic> variables) {
-    observableQuery?.fetchMoreResults(currentResult.data, variables);
+  void _fetchMore(int page, Map<String, dynamic> variables) {
+    final GraphQLClient client = GraphQLProvider.of(context).value;
+    if (pageResults.containsKey(page)) {
+      pageResults[page].close();
+    }
+    final WatchQueryOptions pageOptions = _options;
+    pageOptions.variables = variables;
+    pageResults[page] = client.watchQuery(pageOptions);
   }
 
   @override
@@ -96,7 +110,38 @@ class QueryState extends State<Query> {
       initialData: QueryResult(
         loading: true,
       ),
-      stream: observableQuery.stream,
+      stream: pageResults.isEmpty
+          ? observableQuery.stream
+          : CombineLatestStream.list<QueryResult>(
+              <Stream<QueryResult>>[observableQuery.stream]..addAll(
+                  pageResults.values
+                      .map((ObservableQuery query) => query.stream)
+                      .toList(),
+                ),
+            ).map<QueryResult>((List<QueryResult> results) {
+              final QueryResult mergedResult = QueryResult();
+              for (QueryResult result in results) {
+                if (result.loading == true) {
+                  mergedResult.loading = result.loading;
+                }
+                if (result.errors != null) {
+                  mergedResult.errors = result.errors;
+                  break;
+                }
+                if (mergedResult.data == null && result.data != null) {
+                  mergedResult.data = result.data;
+                } else if (result.data != null) {
+                  // merge pages together
+                  mergedResult.data = widget.options
+                      .fetchMoreMerge(mergedResult.data, result.data);
+                }
+                if (result.stale != null) {
+                  mergedResult.stale = result.stale;
+                  break;
+                }
+              }
+              return mergedResult;
+            }), //observableQuery.stream,
       builder: (
         BuildContext buildContext,
         AsyncSnapshot<QueryResult> snapshot,

@@ -32,7 +32,6 @@ class BaseOptions {
     this.fetchPolicy,
     this.errorPolicy,
     this.context,
-    this.fetchMoreMerge,
   });
 
   /// A GraphQL document that consists of a single query to be sent down to the server.
@@ -50,10 +49,6 @@ class BaseOptions {
 
   /// Context to be passed to link execution chain.
   Map<String, dynamic> context;
-
-  /// the merge function if the query is run again with different variables to
-  /// fetch the next page
-  FetchMoreMerge fetchMoreMerge;
 }
 
 typedef FetchMoreMerge = dynamic Function(dynamic prev, dynamic next);
@@ -67,19 +62,22 @@ class QueryOptions extends BaseOptions {
     ErrorPolicy errorPolicy = ErrorPolicy.none,
     this.pollInterval,
     Map<String, dynamic> context,
-    FetchMoreMerge fetchMoreMerge,
+    this.fetchMoreMerge,
   }) : super(
           document: document,
           variables: variables,
           fetchPolicy: fetchPolicy,
           errorPolicy: errorPolicy,
           context: context,
-          fetchMoreMerge: fetchMoreMerge,
         );
 
   /// The time interval (in milliseconds) on which this query should be
   /// refetched from the server.
   int pollInterval;
+
+  /// the merge function if the query is run again with different variables to
+  /// fetch the next page
+  FetchMoreMerge fetchMoreMerge;
 }
 
 /// Mutation options
@@ -109,7 +107,6 @@ class WatchQueryOptions extends QueryOptions {
     int pollInterval,
     this.fetchResults,
     Map<String, dynamic> context,
-    FetchMoreMerge fetchMoreMerge,
   }) : super(
           document: document,
           variables: variables,
@@ -117,7 +114,6 @@ class WatchQueryOptions extends QueryOptions {
           errorPolicy: errorPolicy,
           pollInterval: pollInterval,
           context: context,
-          fetchMoreMerge: fetchMoreMerge,
         );
 
   /// Whether or not to fetch result.
